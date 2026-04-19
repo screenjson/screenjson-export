@@ -1,0 +1,88 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+version: 2
+
+project_name: screenjson-export
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: screenjson-export
+    main: ./cmd/screenjson-export
+    binary: screenjson-export
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+    flags:
+      - -trimpath
+
+archives:
+  - id: default
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "merge conflict"
+
+release:
+  github:
+    owner: screenjson
+    name: screenjson-export
+  draft: false
+  prerelease: auto
+  name_template: "v{{ .Version }}"
+  header: |
+    ## screenjson-export `v{{ .Version }}`
+
+    Free, open-source CLI that converts Final Draft (`.fdx`),
+    Fountain (`.fountain`, `.spmd`), and FadeIn (`.fadein`)
+    screenplays into [ScreenJSON](https://screenjson.com).
+
+    See the [README](https://github.com/screenjson/screenjson-export#readme) for usage.
+  footer: |
+    ---
+    Pre-built binaries below for macOS, Linux, and Windows on both `x86_64` and `arm64`.
+    Verify with `shasum -a 256 -c checksums.txt`.
+
+dockers:
+  - id: screenjson-export-amd64
+    image_templates:
+      - "screenjson/export:{{ .Version }}-amd64"
+      - "screenjson/export:latest-amd64"
+    use: buildx
+    build_flag_templates:
+      - "--platform=linux/amd64"
+    goos: linux
+    goarch: amd64
+    skip_push: "true"

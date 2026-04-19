@@ -28,58 +28,77 @@ import (
 	"screenjson/export/internal/model"
 )
 
-const version = "1.0.0"
+// version is the CLI version. Injected at build time via
+//   go build -ldflags="-X main.version=v1.2.3"
+// Defaults to "dev" for local unreleased builds.
+var version = "dev"
 
 func main() {
 	fs := flag.NewFlagSet("screenjson-export", flag.ExitOnError)
-	input := fs.String("i", "", "Input file path (.fdx, .fountain, .spmd, or .fadein). Required.")
-	output := fs.String("o", "", "Output file path. Defaults to stdout.")
-	format := fs.String("f", "", "Force input format: fdx | fountain | fadein. Auto-detected if omitted.")
-	lang := fs.String("lang", "en", "BCP 47 primary language tag for the output.")
-	pretty := fs.Bool("pretty", true, "Pretty-print the JSON output.")
-	showVersion := fs.Bool("v", false, "Print version and exit.")
-	showHelp := fs.Bool("h", false, "Print help and exit.")
+
+	var (
+		input       string
+		output      string
+		format      string
+		lang        string
+		pretty      bool
+		showVersion bool
+		showHelp    bool
+	)
+
+	// Short and long forms share a single variable each.
+	fs.StringVar(&input, "i", "", "Input file path (.fdx, .fountain, .spmd, or .fadein). Required.")
+	fs.StringVar(&input, "input", "", "Alias for -i.")
+	fs.StringVar(&output, "o", "", "Output file path. Defaults to stdout.")
+	fs.StringVar(&output, "output", "", "Alias for -o.")
+	fs.StringVar(&format, "f", "", "Force input format: fdx | fountain | fadein. Auto-detected if omitted.")
+	fs.StringVar(&format, "format", "", "Alias for -f.")
+	fs.StringVar(&lang, "lang", "en", "BCP 47 primary language tag for the output.")
+	fs.BoolVar(&pretty, "pretty", true, "Pretty-print the JSON output.")
+	fs.BoolVar(&showVersion, "v", false, "Print version and exit.")
+	fs.BoolVar(&showVersion, "version", false, "Alias for -v.")
+	fs.BoolVar(&showHelp, "h", false, "Print help and exit.")
+	fs.BoolVar(&showHelp, "help", false, "Alias for -h.")
 
 	fs.Usage = printUsage
 
-	// Common aliases.
 	args := rewriteLongFlags(os.Args[1:])
 	if err := fs.Parse(args); err != nil {
 		os.Exit(2)
 	}
 
-	if *showVersion {
+	if showVersion {
 		fmt.Println("screenjson-export", version)
 		return
 	}
-	if *showHelp || *input == "" {
+	if showHelp || input == "" {
 		printUsage()
-		if *input == "" {
+		if input == "" {
 			os.Exit(2)
 		}
 		return
 	}
 
-	data, err := os.ReadFile(*input)
+	data, err := os.ReadFile(input)
 	if err != nil {
 		fatal("read input: %v", err)
 	}
 
-	detected := *format
+	detected := format
 	if detected == "" {
-		detected = detectFormat(*input)
+		detected = detectFormat(input)
 		if detected == "" {
 			fatal("could not detect input format from extension. Use -f <fdx|fountain|fadein>")
 		}
 	}
 
-	doc, err := convert(context.Background(), data, detected, *lang)
+	doc, err := convert(context.Background(), data, detected, lang)
 	if err != nil {
 		fatal("convert: %v", err)
 	}
 
 	var out []byte
-	if *pretty {
+	if pretty {
 		out, err = json.MarshalIndent(doc, "", "  ")
 	} else {
 		out, err = json.Marshal(doc)
@@ -88,7 +107,7 @@ func main() {
 		fatal("marshal: %v", err)
 	}
 
-	if *output == "" {
+	if output == "" {
 		if _, err := os.Stdout.Write(out); err != nil {
 			fatal("write stdout: %v", err)
 		}
@@ -97,7 +116,7 @@ func main() {
 		}
 		return
 	}
-	if err := os.WriteFile(*output, out, 0o644); err != nil {
+	if err := os.WriteFile(output, out, 0o644); err != nil {
 		fatal("write output: %v", err)
 	}
 }
