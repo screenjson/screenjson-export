@@ -1,0 +1,11 @@
+.git
+.github
+.vscode
+.idea
+dist
+out
+*.test
+*.out
+*.exe
+README.md
+LICENSE

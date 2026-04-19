@@ -1,0 +1,16 @@
+# build artifacts
+/screenjson-export
+/dist/
+/out/
+*.exe
+
+# test artifacts
+*.test
+*.out
+coverage.txt
+
+# editors
+.vscode/
+.idea/
+*.swp
+.DS_Store
